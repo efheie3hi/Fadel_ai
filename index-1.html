@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fadel AI</title>
+<meta name="theme-color" content="#0E1420">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0E1420;
+    --panel: #161F33;
+    --panel-2: #1D2740;
+    --gold: #D4A657;
+    --gold-dim: #8C7238;
+    --text: #EDEFF5;
+    --muted: #8B93A7;
+    --user-bubble: #24314F;
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Tajawal', 'Inter', sans-serif;
+    overscroll-behavior: none;
+  }
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+  }
+
+  /* Header */
+  header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    padding-top: max(14px, env(safe-area-inset-top));
+    background: linear-gradient(180deg, var(--panel), var(--bg));
+    border-bottom: 1px solid rgba(212,166,87,0.15);
+  }
+  .avatar {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, var(--gold), var(--gold-dim));
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; color: var(--bg); font-size: 18px;
+    flex-shrink: 0;
+  }
+  header h1 { font-size: 17px; margin: 0; font-weight: 700; }
+  header p { margin: 0; font-size: 12px; color: var(--muted); }
+  .header-actions { margin-inline-start: auto; }
+  .icon-btn {
+    background: none; border: none; color: var(--muted);
+    font-size: 20px; padding: 6px; cursor: pointer;
+  }
+
+  /* Chat area */
+  #chat {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px 14px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .bubble-row { display: flex; }
+  .bubble-row.user { justify-content: flex-start; }
+  .bubble-row.bot { justify-content: flex-end; }
+  .bubble {
+    max-width: 82%;
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    line-height: 1.7;
+    font-size: 15px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  .bubble-row.user .bubble {
+    background: var(--user-bubble);
+    border-bottom-left-radius: 4px;
+  }
+  .bubble-row.bot .bubble {
+    background: var(--panel-2);
+    border: 1px solid rgba(212,166,87,0.18);
+    border-bottom-right-radius: 4px;
+  }
+  .sig {
+    display: block;
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(212,166,87,0.25);
+    color: var(--gold);
+    font-size: 12px;
+    text-align: center;
+    letter-spacing: 0.5px;
+  }
+  .typing {
+    display: inline-flex;
+    gap: 4px;
+    padding: 4px 0;
+  }
+  .typing span {
+    width: 6px; height: 6px;
+    background: var(--gold);
+    border-radius: 50%;
+    animation: bounce 1.2s infinite ease-in-out;
+  }
+  .typing span:nth-child(2) { animation-delay: 0.15s; }
+  .typing span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+    30% { transform: translateY(-4px); opacity: 1; }
+  }
+
+  .empty-state {
+    margin: auto;
+    text-align: center;
+    color: var(--muted);
+    padding: 24px;
+  }
+  .empty-state .mark {
+    font-size: 40px; color: var(--gold); margin-bottom: 10px;
+  }
+
+  /* Input bar */
+  #input-bar {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    padding: 10px 12px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    background: var(--panel);
+    border-top: 1px solid rgba(212,166,87,0.15);
+  }
+  #msg-input {
+    flex: 1;
+    resize: none;
+    max-height: 120px;
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 20px;
+    padding: 11px 16px;
+    font-family: inherit;
+    font-size: 15px;
+    line-height: 1.5;
+    outline: none;
+  }
+  #msg-input:focus { border-color: var(--gold-dim); }
+  #send-btn {
+    background: var(--gold);
+    color: var(--bg);
+    border: none;
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  #send-btn:disabled { opacity: 0.4; }
+
+  /* Setup screen (API key) */
+  #setup {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 28px;
+    text-align: center;
+    z-index: 50;
+  }
+  #setup .mark { font-size: 46px; color: var(--gold); margin-bottom: 12px; }
+  #setup h2 { margin: 0 0 6px; font-size: 20px; }
+  #setup p { color: var(--muted); font-size: 14px; margin: 0 0 22px; max-width: 320px; line-height: 1.8; }
+  #setup a { color: var(--gold); }
+  #setup input {
+    width: 100%; max-width: 340px;
+    background: var(--panel-2);
+    border: 1px solid rgba(212,166,87,0.25);
+    color: var(--text);
+    padding: 13px 16px;
+    border-radius: 12px;
+    font-size: 14px;
+    margin-bottom: 14px;
+    direction: ltr;
+    text-align: center;
+    font-family: 'Inter', sans-serif;
+  }
+  #setup button {
+    background: var(--gold);
+    color: var(--bg);
+    border: none;
+    padding: 13px 32px;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  #setup .err { color: #E08484; font-size: 13px; margin-top: 10px; min-height: 18px; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="avatar">📚</div>
+    <div>
+      <h1>Fadel AI - مساعدك الدراسي</h1>
+      <p>من برمجة: الأستاذ فضل المولى</p>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" id="reset-btn" title="تصفير المحادثة">⟲</button>
+    </div>
+  </header>
+
+  <div id="chat">
+    <div class="empty-state" id="empty-state">
+      <div class="mark">✦</div>
+      <div>أهلاً! أنا أستاذك الدراسي، جاهز أساعدك بأي مادة أو اختصاص.<br>
+      اكتب سؤالك أو صوّر مسألة وابعتهالي وبحلها معك خطوة خطوة 📚</div>
+    </div>
+  </div>
+
+  <div id="image-preview-bar" class="hidden" style="padding:8px 14px; background:var(--panel); display:flex; align-items:center; gap:10px;">
+    <img id="image-preview" style="width:44px; height:44px; object-fit:cover; border-radius:8px; border:1px solid rgba(212,166,87,0.3);">
+    <span style="font-size:13px; color:var(--muted); flex:1;">صورة مرفقة جاهزة للإرسال</span>
+    <button id="clear-image-btn" class="icon-btn" style="font-size:16px;">✕</button>
+  </div>
+
+  <div id="input-bar">
+    <button id="attach-btn" class="icon-btn" title="صوّر أو ارفع مسألة" style="font-size:22px;">📷</button>
+    <input type="file" id="file-input" accept="image/*" capture="environment" style="display:none;">
+    <textarea id="msg-input" rows="1" placeholder="اكتب سؤالك أو أرفق صورة..."></textarea>
+    <button id="send-btn">➤</button>
+  </div>
+</div>
+
+<div id="setup">
+  <div class="mark">✦</div>
+  <h2>أهلاً بك في Fadel AI</h2>
+  <p>
+    عشان يشتغل التطبيق، بدك تدخل مفتاح وصول مجاني خاص فيك.
+    المفتاح بينحفظ على تلفونك بس، وما بيروح لأي مكان تاني.<br>
+    <a href="https://aistudio.google.com/apikey" target="_blank">جيب مفتاحك المجاني من هون</a>
+  </p>
+  <input type="text" id="api-key-input" placeholder="الصق مفتاحك هون">
+  <button id="save-key-btn">ابدأ المحادثة</button>
+  <div class="err" id="setup-err"></div>
+</div>
+
+<script>
+const SYSTEM_PROMPT = `انت أستاذ ذكاء صناعي اسمك Fadel AI، مخصص بس لمساعدة الطلاب بالدراسة، بكل المواد والاختصاصات
+(رياضيات، فيزياء، كيمياء، أحياء، لغات، تاريخ، برمجة، إلخ).
+- شخصيتك جدية بس قريبة ومشجعة، متل أستاذ بيحب يشرح.
+- بتشرح كل حل خطوة خطوة بطريقة واضحة وسهلة الفهم، ومش بس بتعطي الجواب النهائي.
+- إذا حدا بعتلك صورة مسألة أو سؤال، اقرا المسألة منيح وحلها بالتفصيل خطوة خطوة.
+- إذا حدا سألك عن شي مالو علاقة بالدراسة، ذكّرو بلطف إنك مخصص للمساعدة بالدراسة بس،
+  واقترح عليه يسألك سؤال دراسي بدلاً عن هيك.
+- بآخر كل رد، ضيف توقيع فني بسيط باسم "الأستاذ فضل المولى"، بشكل منفصل بصرياً عن نص الجواب.
+- إذا حدا سألك مين اخترعك أو مين بناك، جاوب إنو الأستاذ فضل المولى هو يلي بناك وبرمجك.
+- ما تذكر أبداً اسم أي شركة تقنية أو نموذج ذكاء صناعي تاني (متل Google أو Gemini) — إنت
+  Fadel AI بس.`;
+
+const FALLBACK_MODELS = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.5-flash-lite", "gemini-2.0-flash"];
+
+let apiKey = localStorage.getItem("fadel_access_key") || "";
+let history = JSON.parse(localStorage.getItem("fadel_history") || "[]");
+
+const chatEl = document.getElementById("chat");
+const emptyState = document.getElementById("empty-state");
+const inputEl = document.getElementById("msg-input");
+const sendBtn = document.getElementById("send-btn");
+const setupEl = document.getElementById("setup");
+const apiKeyInput = document.getElementById("api-key-input");
+const saveKeyBtn = document.getElementById("save-key-btn");
+const setupErr = document.getElementById("setup-err");
+const resetBtn = document.getElementById("reset-btn");
+const attachBtn = document.getElementById("attach-btn");
+const fileInput = document.getElementById("file-input");
+const imagePreviewBar = document.getElementById("image-preview-bar");
+const imagePreview = document.getElementById("image-preview");
+const clearImageBtn = document.getElementById("clear-image-btn");
+let pendingImage = null; // { mimeType, base64 }
+
+function init() {
+  if (apiKey) {
+    setupEl.classList.add("hidden");
+    renderHistory();
+  } else {
+    setupEl.classList.remove("hidden");
+  }
+}
+
+function renderHistory() {
+  chatEl.innerHTML = "";
+  if (history.length === 0) {
+    chatEl.appendChild(emptyState);
+    return;
+  }
+  history.forEach(turn => {
+    const firstPart = turn.parts[0];
+    const label = firstPart.text || "📷 (صورة مسألة)";
+    addBubble(turn.role === "user" ? "user" : "bot", label);
+  });
+  scrollToBottom();
+}
+
+function addBubble(role, text) {
+  if (emptyState.parentNode) emptyState.remove();
+  const row = document.createElement("div");
+  row.className = "bubble-row " + role;
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+  bubble.textContent = text;
+  row.appendChild(bubble);
+  chatEl.appendChild(row);
+  scrollToBottom();
+  return bubble;
+}
+
+function addTypingIndicator() {
+  const row = document.createElement("div");
+  row.className = "bubble-row bot";
+  row.id = "typing-row";
+  row.innerHTML = `<div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;
+  chatEl.appendChild(row);
+  scrollToBottom();
+}
+function removeTypingIndicator() {
+  const el = document.getElementById("typing-row");
+  if (el) el.remove();
+}
+
+function scrollToBottom() {
+  chatEl.scrollTop = chatEl.scrollHeight;
+}
+
+async function callGemini(modelName, historyToSend) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+  const body = {
+    contents: historyToSend,
+    systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] }
+  };
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData?.error?.message || `HTTP ${res.status}`);
+  }
+  const data = await res.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error("empty response");
+  return text;
+}
+
+async function askGemini(historyToSend) {
+  let lastErr = null;
+  for (const model of FALLBACK_MODELS) {
+    try {
+      return await callGemini(model, historyToSend);
+    } catch (e) {
+      lastErr = e;
+      continue;
+    }
+  }
+  throw lastErr || new Error("all models failed");
+}
+
+async function sendMessage() {
+  const text = inputEl.value.trim();
+  if (!text && !pendingImage) return;
+  inputEl.value = "";
+  inputEl.style.height = "auto";
+  sendBtn.disabled = true;
+
+  const parts = [];
+  if (text) parts.push({ text });
+  if (pendingImage) {
+    parts.push({ inlineData: { mimeType: pendingImage.mimeType, data: pendingImage.base64 } });
+  }
+
+  addBubble("user", text || "📷 (صورة مسألة)");
+  history.push({ role: "user", parts });
+  clearPendingImage();
+
+  addTypingIndicator();
+  try {
+    const reply = await askGemini(history);
+    removeTypingIndicator();
+    addBubble("bot", reply);
+    history.push({ role: "model", parts: [{ text: reply }] });
+    history = history.slice(-50);
+    saveHistoryLight();
+  } catch (e) {
+    removeTypingIndicator();
+    addBubble("bot", "🛠️ البوت تحت الصيانة من الأستاذ فضل المولى، جرب بعد شوي.");
+    history.pop(); // don't keep the failed turn corrupting future context
+  }
+  sendBtn.disabled = false;
+}
+
+function saveHistoryLight() {
+  // Don't persist base64 image data (too heavy for localStorage) —
+  // keep it in memory for this session only.
+  const light = history.map(turn => ({
+    role: turn.role,
+    parts: turn.parts.map(p => p.text ? p : { text: "📷 (صورة مسألة)" })
+  }));
+  try {
+    localStorage.setItem("fadel_history", JSON.stringify(light));
+  } catch (e) {
+    // storage full or blocked — non-critical, chat still works this session
+  }
+}
+
+function clearPendingImage() {
+  pendingImage = null;
+  fileInput.value = "";
+  imagePreviewBar.classList.add("hidden");
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(",")[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+attachBtn.addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change", async () => {
+  const file = fileInput.files[0];
+  if (!file) return;
+  const base64 = await fileToBase64(file);
+  pendingImage = { mimeType: file.type, base64 };
+  imagePreview.src = "data:" + file.type + ";base64," + base64;
+  imagePreviewBar.classList.remove("hidden");
+});
+clearImageBtn.addEventListener("click", clearPendingImage);
+
+sendBtn.addEventListener("click", sendMessage);
+inputEl.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+inputEl.addEventListener("input", () => {
+  inputEl.style.height = "auto";
+  inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + "px";
+});
+
+resetBtn.addEventListener("click", () => {
+  history = [];
+  localStorage.removeItem("fadel_history");
+  renderHistory();
+});
+
+saveKeyBtn.addEventListener("click", () => {
+  const val = apiKeyInput.value.trim();
+  if (!val) {
+    setupErr.textContent = "لازم تدخل مفتاح صحيح";
+    return;
+  }
+  apiKey = val;
+  localStorage.setItem("fadel_access_key", apiKey);
+  setupEl.classList.add("hidden");
+  renderHistory();
+});
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("service-worker.js").catch(() => {});
+  });
+}
+
+init();
+</script>
+</body>
+</html>
